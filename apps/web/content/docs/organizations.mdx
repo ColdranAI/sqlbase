@@ -1,0 +1,338 @@
+---
+title: Organizations
+description: Multi-tenant organization system with role-based access control and team collaboration
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Organizations
+
+Organizations are the foundation of SQLBase's multi-tenant architecture. They provide isolated workspaces where teams can collaborate on database projects with role-based permissions and secure access control.
+
+<Callout type="info">
+**Key Concept**: Every project, database connection, and team member belongs to an organization. This ensures data isolation and proper access control.
+</Callout>
+
+## Overview
+
+An organization in SQLBase is a workspace that contains:
+
+- **Projects**: Database projects with connections and configurations
+- **Members**: Team members with specific roles and permissions  
+- **Invitations**: Pending email invitations for new team members
+- **Usage Metrics**: Storage, compute, and resource tracking
+- **Settings**: Organization-wide configurations and preferences
+
+## Organization Roles
+
+SQLBase implements a three-tier role system:
+
+### Owner
+- **Full administrative control** over the organization
+- Can manage all members, projects, and settings
+- Can delete the organization
+- **Cannot be removed** by other members
+- **One per organization** (the creator)
+
+### Admin
+- Can **manage members** and their roles
+- Can **create and delete** projects
+- Can **send invitations** to new team members
+- Can access **all organization projects**
+- Cannot delete the organization
+
+### Member
+- Can **view and edit** assigned projects
+- Can **execute SQL queries** within permitted projects
+- **Cannot manage** other team members
+- **Cannot create** new projects (admin approval required)
+
+## Creating an Organization
+
+When you first sign up for SQLBase, you'll see an onboarding screen prompting you to create your first organization.
+
+### Manual Creation
+
+You can create additional organizations anytime:
+
+1. **Navigate to Dashboard**: Click the organization selector in the top-left
+2. **Select "Create Organization"**: From the dropdown menu
+3. **Fill Organization Details**:
+   - **Name**: Display name (e.g., "Acme Corp")
+   - **Slug**: URL-friendly identifier (e.g., "acme-corp")
+   - **Description**: Optional description of your organization
+
+```typescript title="Organization Creation Example"
+// The organization creation dialog automatically generates
+// a slug from the name, but you can customize it
+const organizationData = {
+  name: "Acme Corporation",
+  slug: "acme-corp", // Used in URLs
+  description: "Our main development organization"
+}
+```
+
+<Callout type="warn">
+**Organization Slug**: The slug is used in URLs and must be unique across SQLBase. Choose carefully as it affects your project URLs.
+</Callout>
+
+## Organization Dashboard
+
+The organization dashboard provides a comprehensive overview of your workspace:
+
+### Usage Metrics
+
+<Tabs items={["Storage", "Compute", "Members", "Projects"]}>
+
+<Tab value="Storage">
+**Storage Usage**
+- Database connections and metadata
+- Query history and cached results
+- Organization settings and configurations
+
+**Monitoring**:
+- Current usage vs. limits
+- Storage growth over time
+- Cleanup recommendations
+</Tab>
+
+<Tab value="Compute">
+**Compute Metrics**
+- SQL query execution time
+- Database connection overhead
+- Schema introspection operations
+
+**Optimization**:
+- Query performance insights
+- Connection pooling efficiency
+- Resource usage patterns
+</Tab>
+
+<Tab value="Members">
+**Team Management**
+- Active member count
+- Role distribution
+- Invitation status
+
+**Member Limits**:
+- Free tier: 5 members
+- Pro tier: 50 members
+- Enterprise: Unlimited
+</Tab>
+
+<Tab value="Projects">
+**Project Overview**
+- Total project count
+- Active connections
+- Recent activity
+
+**Project Organization**:
+- Connected vs. unconnected projects
+- Database types and sizes
+- Team collaboration metrics
+</Tab>
+
+</Tabs>
+
+### Project Grid
+
+Projects are displayed in a responsive grid showing:
+
+- **Connection Status**: Green badge for connected databases
+- **Last Activity**: Timestamp of most recent query or change
+- **Database Type**: PostgreSQL connection type indicator
+- **Team Access**: Number of members with access
+
+## Managing Members
+
+### Viewing Members
+
+The members dialog shows all organization participants:
+
+```typescript title="Member Information Structure"
+interface OrganizationMember {
+  id: string
+  organization_id: string
+  user_id: string
+  email: string
+  role: 'owner' | 'admin' | 'member'
+  status: 'active' | 'pending' | 'suspended'
+  joined_at: string
+  invited_at: string
+  invited_by: string
+  user?: {
+    id: string
+    name: string
+    email: string
+    image?: string
+  }
+}
+```
+
+### Member Operations
+
+**Role Changes** (Admin/Owner only):
+- Change member from "Member" to "Admin" or vice versa
+- Role changes take effect immediately
+- Members are notified of role changes
+
+**Removing Members** (Admin/Owner only):
+- Remove members from the organization
+- All member access to projects is revoked
+- Member data is preserved for audit trail
+
+### Pending Invitations
+
+Track and manage email invitations:
+
+- **View Status**: See which invitations are pending, accepted, or expired
+- **Resend Invitations**: Send reminder emails for pending invitations
+- **Cancel Invitations**: Revoke pending invitations before acceptance
+- **Expiration Management**: Invitations expire after 7 days
+
+## Organization Settings
+
+### Basic Information
+
+Update organization details:
+- **Display Name**: Shown in navigation and project lists
+- **Description**: Optional description for team context
+- **Logo**: Upload organization logo (optional)
+
+### Advanced Settings
+
+**URL Slug**:
+- Used in project URLs: `/dashboard/organizations/{slug}/projects/{id}`
+- Cannot be changed after creation (contact support if needed)
+
+**Member Permissions**:
+- Default role for new invitations
+- Project creation permissions
+- API access controls
+
+### Billing and Usage
+
+**Plan Management**:
+- View current subscription tier
+- Usage limits and overages
+- Billing history and invoices
+
+**Resource Limits**:
+- Storage quotas per tier
+- Compute hour allocations
+- Member count restrictions
+
+## Switching Organizations
+
+Users can belong to multiple organizations and switch between them:
+
+### Organization Selector
+
+1. **Click Organization Name**: In the top navigation
+2. **Select Target Organization**: From the dropdown
+3. **Context Switch**: All views update to the selected organization
+
+```typescript title="Organization Context Switching"
+// SQLBase automatically saves your last selected organization
+// and restores it on next login
+localStorage.setItem(`current-org-${userId}`, organizationId)
+```
+
+### Cross-Organization Access
+
+**Isolated Data**: Each organization's data is completely isolated
+**Separate Permissions**: Roles and access are per-organization
+**Independent Billing**: Each organization has its own subscription
+
+## Step-by-Step Walkthrough
+
+### Your First Organization
+
+When you sign up for SQLBase, you'll see a beautiful onboarding screen that guides you through creating your first organization:
+
+1. **Welcome Screen**: You'll see feature highlights and a prominent "Create Your First Organization" button
+2. **Organization Form**: Fill in your organization name (e.g., "Acme Corp") and the system auto-generates a URL-friendly slug
+3. **Add Description**: Optionally describe your organization's purpose
+4. **Create**: Click "Create Organization" and you're ready to go!
+
+### Adding Your First Team Member
+
+Once your organization is created:
+
+1. **Click "Invite"**: From your organization dashboard
+2. **Enter Email**: Add your teammate's email address
+3. **Choose Role**: Select Admin (can manage team) or Member (can use projects)
+4. **Personal Message**: Add a welcome message (optional)
+5. **Send Invitation**: Your teammate receives a professional email invitation
+
+### Managing Your Team
+
+The "Members" button shows your entire team:
+
+- **Active Members**: See who's already in your organization with their roles
+- **Pending Invitations**: Track who you've invited but hasn't joined yet
+- **Quick Actions**: Resend invitations or change member roles with a few clicks
+
+## Best Practices
+
+### Organization Structure
+
+**Single Purpose**: Create organizations for specific teams or projects
+**Clear Naming**: Use descriptive names that indicate the organization purpose
+**Consistent Roles**: Establish clear role definitions across organizations
+
+### Member Management
+
+**Regular Audits**: Review member lists quarterly
+**Role Minimization**: Grant minimum required permissions
+**Offboarding Process**: Remove departing team members promptly
+
+### Project Organization
+
+**Logical Grouping**: Group related databases within the same organization
+**Environment Separation**: Consider separate organizations for prod/staging
+**Access Control**: Use projects to control database-level access
+
+## Troubleshooting
+
+### Common Issues
+
+**Cannot Create Organization**:
+```
+Error: Organization slug already exists
+```
+- Choose a different, unique slug
+- Slugs must be globally unique across SQLBase
+
+**Member Invitation Failed**:
+```
+Error: Invalid email address
+```
+- Verify email format is correct
+- Check for typos in email address
+- Ensure recipient can receive external emails
+
+**Role Change Denied**:
+```
+Error: Insufficient permissions
+```
+- Only Owners and Admins can change roles
+- Cannot change your own role
+- Cannot remove the organization Owner
+
+### Getting Help
+
+If you encounter organization-related issues:
+
+1. **Check Permissions**: Verify you have the required role
+2. **Review Limits**: Ensure you haven't exceeded plan limits
+3. **Contact Support**: For slug changes or complex issues
+
+---
+
+## Next Steps
+
+- **[Projects →](/docs/projects)** - Learn about organizing databases into projects
+- **[Invitations →](/docs/invitations)** - Deep dive into the email invitation system
+- **[API Reference →](/docs/api/organizations)** - Complete API documentation 

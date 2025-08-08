@@ -1,0 +1,62 @@
+        // Initialize handlers
+        userHandler := handlers.NewUserHandler(s.db, s.redis)
+        metricsHandler := handlers.NewMetricsHandler(s.db, s.redis)
+        organizationHandler := handlers.NewOrganizationHandler(s.db)
+        projectHandler := handlers.NewProjectHandler(s.db)
+        invitationHandler := handlers.NewInvitationHandler(s.db)
+        s.dbConfigHandler = handlers.NewDatabaseConfigHandler(s.db, s.redis)
+        s.sqlPlaygroundHandler = handlers.NewSQLPlaygroundHandler(s.db, s.redis, s.dbConfigHandler)
+
+        // User routes
+        users := api.PathPrefix("/users").Subrouter()
+        users.HandleFunc("", userHandler.CreateUser).Methods("POST")
+        users.HandleFunc("/{user_id}", userHandler.GetUser).Methods("GET")
+        users.HandleFunc("/{user_id}", userHandler.UpdateUser).Methods("PUT")
+        users.HandleFunc("/{user_id}/resources", userHandler.CreateUserResource).Methods("POST")
+        users.HandleFunc("/{user_id}/resources", userHandler.GetUserResources).Methods("GET")
+        users.HandleFunc("/{user_id}/database-config", s.dbConfigHandler.CreateDatabaseConfig).Methods("POST")
+        users.HandleFunc("/{user_id}/database-config", s.dbConfigHandler.DeleteDatabaseConfig).Methods("DELETE")
+        users.HandleFunc("/{user_id}/database-config/test", s.dbConfigHandler.TestDatabaseConnection).Methods("POST")
+        users.HandleFunc("/{user_id}/database-config/test-url", s.dbConfigHandler.TestDatabaseURL).Methods("POST")
+        users.HandleFunc("/{user_id}/sql/execute", s.sqlPlaygroundHandler.ExecuteQuery).Methods("POST")
+        users.HandleFunc("/{user_id}/sql/schema", s.sqlPlaygroundHandler.GetDatabaseSchema).Methods("GET")
+        users.HandleFunc("/{user_id}/sql/history", s.sqlPlaygroundHandler.GetQueryHistory).Methods("GET")
+
+        // Organization routes
+        users.HandleFunc("/{userId}/organizations", organizationHandler.GetUserOrganizations).Methods("GET")
+        users.HandleFunc("/{userId}/organizations", organizationHandler.CreateOrganization).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}", organizationHandler.GetOrganization).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/usage", organizationHandler.GetOrganizationUsage).Methods("GET")
+        
+        // Organization invitation routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations", organizationHandler.InviteToOrganization).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations", invitationHandler.GetOrganizationInvitations).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations/{invitationId}", invitationHandler.CancelInvitation).Methods("DELETE")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations/{invitationId}/resend", invitationHandler.ResendInvitation).Methods("POST")
+        
+        // Project routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects", projectHandler.GetOrganizationProjects).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects", projectHandler.CreateProject).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}", projectHandler.GetProject).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}", projectHandler.UpdateProject).Methods("PUT")
+        
+        // Project-specific invitation routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}/invitations", organizationHandler.InviteToProject).Methods("POST")
+
+        // Metrics routes
+        metrics := api.PathPrefix("/metrics").Subrouter()
+        metrics.HandleFunc("", metricsHandler.CreateMetric).Methods("POST")
+        metrics.HandleFunc("", metricsHandler.GetMetrics).Methods("GET")
+        metrics.HandleFunc("/summary", metricsHandler.GetMetricsSummary).Methods("GET")
+
+        // Public invitation routes (no auth required)
+        publicAPI := r.PathPrefix("/api/v1").Subrouter()
+        publicAPI.Use(middleware.RateLimitMiddleware(s.config.RateLimitRPS/2, s.config.RateLimitBurst/2))
+        publicAPI.HandleFunc("/invitations/{token}", invitationHandler.GetInvitationDetails).Methods("GET")
+        publicAPI.HandleFunc("/invitations/{token}/accept", invitationHandler.AcceptInvitation).Methods("POST")
+
+        // Public metrics (optional auth)
+        publicMetrics := r.PathPrefix("/api/v1/public").Subrouter()
+        publicMetrics.Use(middleware.OptionalAuthMiddleware(s.jwtValidator))
+        publicMetrics.Use(middleware.RateLimitMiddleware(s.config.RateLimitRPS/2, s.config.RateLimitBurst/2))
+        publicMetrics.HandleFunc("/metrics", metricsHandler.CreateMetric).Methods("POST")

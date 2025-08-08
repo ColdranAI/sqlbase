@@ -1,0 +1,289 @@
+---
+title: Database Connections
+description: Connect your PostgreSQL database securely using multiple connection methods
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Connecting Your Database
+
+SQLBase makes it easy to connect your PostgreSQL database securely. Whether your database is in the cloud, behind a firewall, or on your local network, we've got you covered with multiple connection methods.
+
+<Callout type="info">
+**Security First**: All database credentials are encrypted with AES-256-GCM encryption before being stored. Your data stays secure.
+</Callout>
+
+## Connection Methods
+
+SQLBase offers three ways to connect your database, each designed for different scenarios:
+
+<Tabs items={["Database URL", "SSH Tunnel", "WireGuard VPN"]}>
+
+<Tab value="Database URL">
+**Direct Connection** - The easiest method
+
+Perfect for cloud databases and services that provide direct connection strings.
+
+**When to use**:
+- Cloud providers (AWS RDS, Google Cloud SQL, Azure Database)
+- Managed services (Neon, Supabase, PlanetScale, Railway)
+- Docker containers with exposed ports
+- Development databases
+
+**How it works**:
+1. Get your connection string from your database provider
+2. Paste it into SQLBase
+3. Click "Test Connection" to verify
+4. Save your configuration
+
+**Example connection strings**:
+```
+postgresql://user:password@hostname:5432/database
+postgres://user:password@hostname.region.provider.com:5432/db
+```
+</Tab>
+
+<Tab value="SSH Tunnel">
+**SSH Tunneling** - For secure environments
+
+Connect through an SSH gateway server to reach databases behind firewalls.
+
+**When to use**:
+- Databases behind corporate firewalls
+- On-premise servers accessible via SSH
+- Additional security layer for cloud databases
+- Bastion host configurations
+
+**What you need**:
+- SSH server hostname and port
+- SSH username and private key
+- Database connection details (accessible from SSH server)
+
+**How it works**:
+1. SQLBase connects to your SSH server
+2. Creates a secure tunnel to your database
+3. All traffic is encrypted end-to-end
+4. Your database stays hidden from the internet
+</Tab>
+
+<Tab value="WireGuard VPN">
+**VPN Connection** - For corporate networks
+
+Connect through your existing WireGuard VPN infrastructure.
+
+**When to use**:
+- Corporate networks requiring VPN access
+- Multi-cloud environments
+- Compliance requirements for network isolation
+- Remote access to internal databases
+
+**What you need**:
+- WireGuard configuration file from your IT team
+- Database connection string (accessible via VPN)
+
+**How it works**:
+1. SQLBase establishes VPN connection using your config
+2. Connects to database through secure tunnel
+3. All traffic routed through your corporate network
+4. Maintains audit trails and compliance
+</Tab>
+
+</Tabs>
+
+## Step-by-Step Connection Guide
+
+### Method 1: Database URL (Recommended for beginners)
+
+This is the most straightforward method for most cloud databases:
+
+1. **Get Your Connection String**
+   - Log into your database provider (Neon, Supabase, AWS, etc.)
+   - Find the "Connection" or "Settings" section
+   - Copy the PostgreSQL connection string
+
+2. **Open SQLBase Project**
+   - Navigate to your project
+   - Click the "Database Connection" tab
+   - Select "Database URL" at the top
+
+3. **Enter Connection Details**
+   - Paste your connection string in the text field
+   - The format should look like: `postgresql://user:pass@host:port/db`
+
+4. **Test the Connection**
+   - Click "Test Connection" to verify everything works
+   - You'll see a green checkmark if successful
+   - Any errors will be displayed with helpful suggestions
+
+5. **Save Configuration**
+   - Click "Save Configuration" once the test passes
+   - Your credentials are encrypted and stored securely
+   - You'll automatically switch to the Database Overview tab
+
+### Method 2: SSH Tunnel (For secure environments)
+
+For databases accessible through SSH servers:
+
+1. **Gather SSH Information**
+   - SSH server hostname (e.g., `server.company.com`)
+   - SSH port (usually 22)
+   - Your SSH username
+   - Path to your private key file
+
+2. **Get Database Details**
+   - Database hostname as seen from the SSH server
+   - Database port (usually 5432)
+   - Database name, username, and password
+
+3. **Configure in SQLBase**
+   - Select "SSH" tab in the connection dialog
+   - Fill in SSH server details
+   - Add your database connection string
+   - Upload or paste your SSH private key
+
+4. **Test and Save**
+   - Click "Test Connection" to verify both SSH and database access
+   - Save once successful
+
+### Method 3: WireGuard VPN (For corporate networks)
+
+For VPN-protected databases:
+
+1. **Get WireGuard Config**
+   - Request configuration from your IT team
+   - Should include interface and peer settings
+   - Usually provided as a `.conf` file
+
+2. **Configure in SQLBase**
+   - Select "WireGuard Config" tab
+   - Paste your WireGuard configuration
+   - Add your internal database connection string
+
+3. **Test and Save**
+   - SQLBase will establish VPN connection first
+   - Then test database connectivity
+   - Save once both connections work
+
+## Connection Testing
+
+SQLBase tests your connection before saving to ensure everything works correctly:
+
+### What We Test
+- **Network Connectivity**: Can we reach your database server?
+- **Authentication**: Are your credentials correct?
+- **Database Access**: Can we query basic information?
+- **SSL/TLS**: Is the connection properly encrypted?
+
+### Common Test Results
+
+**✅ Connection Successful**
+- Green checkmark indicates everything works
+- You can proceed to save your configuration
+
+**❌ Connection Timeout**
+- Network connectivity issues
+- Check hostname and port
+- Verify firewall settings
+
+**❌ Authentication Failed**
+- Incorrect username or password
+- Verify credentials with your database provider
+
+**❌ Database Not Found**
+- Database name is incorrect
+- Check if database exists
+
+## Security Features
+
+### Encryption at Rest
+All database credentials are encrypted using AES-256-GCM before storage. Even SQLBase administrators cannot view your actual credentials.
+
+### Connection Security
+- **SSL/TLS**: All database connections use encrypted transport
+- **Certificate Validation**: SSL certificates are verified for authenticity
+- **Secure Tunneling**: SSH and VPN connections provide additional encryption layers
+
+### Access Control
+- **Organization Isolation**: Database connections are scoped to your organization
+- **Role-Based Access**: Only authorized team members can access configurations
+- **Audit Logging**: All connection attempts and changes are logged
+
+## Troubleshooting Common Issues
+
+### "Connection Timed Out"
+
+**Possible Causes**:
+- Database server is down or unreachable
+- Firewall blocking connections
+- Incorrect hostname or port
+
+**Solutions**:
+1. Verify your database is running
+2. Check firewall rules and security groups
+3. Test connection from your local machine first
+4. Contact your database administrator
+
+### "Authentication Failed"
+
+**Possible Causes**:
+- Wrong username or password
+- User doesn't have required permissions
+- Password has special characters
+
+**Solutions**:
+1. Verify credentials are correct
+2. Ensure user has `CONNECT` permission on database
+3. Try connecting with a database client first
+4. Check if password needs URL encoding
+
+### "SSL Connection Required"
+
+**Possible Causes**:
+- Database requires SSL connections
+- SSL certificate issues
+
+**Solutions**:
+1. Enable SSL in your connection string
+2. Add `?sslmode=require` to your connection URL
+3. Contact your database provider for SSL requirements
+
+### "Database Does Not Exist"
+
+**Possible Causes**:
+- Typo in database name
+- Database hasn't been created yet
+- User doesn't have access to database
+
+**Solutions**:
+1. Double-check database name spelling
+2. Verify database exists in your provider's dashboard
+3. Ensure your user has access permissions
+
+## Best Practices
+
+### Security
+- **Use SSL**: Always enable SSL/TLS for database connections
+- **Least Privilege**: Create dedicated database users for SQLBase with minimal required permissions
+- **Regular Rotation**: Rotate database passwords periodically
+- **Monitor Access**: Review database logs for suspicious activity
+
+### Performance
+- **Connection Pooling**: Use connection pooling if your database supports it
+- **Nearby Regions**: Choose database regions close to SQLBase for better performance
+- **Timeout Settings**: Configure appropriate timeout values for your network
+
+### Organization
+- **Descriptive Names**: Use clear project names that indicate the database purpose
+- **Environment Separation**: Use different projects for production and development databases
+- **Team Access**: Only grant access to team members who need it
+
+---
+
+## Next Steps
+
+Once your database is connected:
+
+- **[Database Overview →](/docs/database/schema)** - Explore your database structure
+- **[SQL Playground →](/docs/database/sql-playground)** - Start writing and executing queries
+- **[Team Collaboration →](/docs/projects)** - Learn about sharing projects with teammates 

@@ -1,0 +1,381 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"go-backend/auth"
+	"go-backend/config"
+	"go-backend/database"
+	"go-backend/handlers"
+	"go-backend/middleware"
+
+	gorillaHandlers "github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
+
+type Server struct {
+	config      *config.Config
+	db          *database.PostgresDB
+	redis       *database.RedisClient
+	jwtValidator *auth.JWTValidator
+	sshTunnel   *database.SSHTunnel
+	httpServer  *http.Server
+	dbConfigHandler *handlers.DatabaseConfigHandler
+	sqlPlaygroundHandler *handlers.SQLPlaygroundHandler
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal().Err(err).Msg("Application failed to start")
+	}
+}
+
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	setupLogging(cfg.LogLevel)
+
+	server := &Server{
+		config: cfg,
+	}
+
+	if err := server.initialize(); err != nil {
+		return fmt.Errorf("failed to initialize server: %w", err)
+	}
+
+	return server.start()
+}
+
+func (s *Server) initialize() error {
+	log.Info().Msg("Initializing server...")
+
+	if err := s.initializeAuth(); err != nil {
+		return fmt.Errorf("failed to initialize auth: %w", err)
+	}
+
+	if err := s.initializeSSHTunnel(); err != nil {
+		return fmt.Errorf("failed to initialize SSH tunnel: %w", err)
+	}
+
+	if err := s.initializeDatabase(); err != nil {
+		return fmt.Errorf("failed to initialize database: %w", err)
+	}
+
+	if err := s.initializeRedis(); err != nil {
+		log.Warn().Err(err).Msg("Failed to initialize Redis - continuing without cache")
+	}
+
+	log.Info().Msg("Server initialized successfully")
+	return nil
+}
+
+func (s *Server) initializeAuth() error {
+	if s.config.BetterAuthSecret == "" {
+		return fmt.Errorf("BETTER_AUTH_SECRET is required")
+	}
+
+	jwtValidator, err := auth.NewJWTValidator(s.config.BetterAuthSecret)
+	if err != nil {
+		return fmt.Errorf("failed to create JWT validator: %w", err)
+	}
+
+	s.jwtValidator = jwtValidator
+	log.Info().Msg("JWT validator initialized")
+	return nil
+}
+
+func (s *Server) initializeSSHTunnel() error {
+	if s.config.SSHHost == "" {
+		log.Info().Msg("SSH tunnel not configured - skipping")
+		return nil
+	}
+
+	localAddr := "localhost:5433"
+	remoteAddr := "localhost:5432"
+
+	tunnel, err := database.NewSSHTunnel(
+		s.config.SSHHost,
+		s.config.SSHPort,
+		s.config.SSHUser,
+		s.config.SSHKeyPath,
+		localAddr,
+		remoteAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create SSH tunnel: %w", err)
+	}
+
+	s.sshTunnel = tunnel
+	
+	databaseURL := fmt.Sprintf("postgres://user:password@%s/dbname?sslmode=disable", localAddr)
+	s.config.DatabaseURL = databaseURL
+
+	log.Info().Msg("SSH tunnel initialized")
+	return nil
+}
+
+func (s *Server) initializeDatabase() error {
+	db, err := database.NewPostgresDB(s.config.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	if err := db.InitTables(); err != nil {
+		return fmt.Errorf("failed to initialize database tables: %w", err)
+	}
+
+	s.db = db
+	log.Info().Msg("Database initialized")
+	return nil
+}
+
+func (s *Server) initializeRedis() error {
+	if s.config.RedisURL == "" {
+		return fmt.Errorf("Redis URL not configured")
+	}
+
+	redis, err := database.NewRedisClient(s.config.RedisURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	s.redis = redis
+	log.Info().Msg("Redis initialized")
+	return nil
+}
+
+func (s *Server) start() error {
+	router := s.setupRoutes()
+	
+	s.httpServer = &http.Server{
+		Addr:         ":" + s.config.Port,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		log.Info().
+			Str("port", s.config.Port).
+			Msg("Starting HTTP server")
+		
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("HTTP server failed")
+		}
+	}()
+
+	return s.waitForShutdown()
+}
+
+func (s *Server) setupRoutes() http.Handler {
+        r := mux.NewRouter()
+
+        r.Use(middleware.RecoveryMiddleware())
+        r.Use(middleware.HealthCheckLoggingMiddleware())
+        r.Use(middleware.RateLimitMiddleware(s.config.RateLimitRPS, s.config.RateLimitBurst))
+
+        r.HandleFunc("/health", s.healthHandler).Methods("GET")
+        r.HandleFunc("/", s.rootHandler).Methods("GET")
+
+        api := r.PathPrefix("/api/v1").Subrouter()
+        api.Use(middleware.AuthMiddleware(s.jwtValidator))
+        api.Use(middleware.UserRateLimitMiddleware(s.config.RateLimitRPS*2, s.config.RateLimitBurst*2))
+
+        // Initialize handlers
+        userHandler := handlers.NewUserHandler(s.db, s.redis)
+        metricsHandler := handlers.NewMetricsHandler(s.db, s.redis)
+        organizationHandler := handlers.NewOrganizationHandler(s.db)
+        projectHandler := handlers.NewProjectHandler(s.db)
+        invitationHandler := handlers.NewInvitationHandler(s.db)
+        s.dbConfigHandler = handlers.NewDatabaseConfigHandler(s.db, s.redis)
+        s.sqlPlaygroundHandler = handlers.NewSQLPlaygroundHandler(s.db, s.redis, s.dbConfigHandler)
+
+        // User routes
+        users := api.PathPrefix("/users").Subrouter()
+        users.HandleFunc("", userHandler.CreateUser).Methods("POST")
+        users.HandleFunc("/{user_id}", userHandler.GetUser).Methods("GET")
+        users.HandleFunc("/{user_id}", userHandler.UpdateUser).Methods("PUT")
+        users.HandleFunc("/{user_id}/resources", userHandler.CreateUserResource).Methods("POST")
+        users.HandleFunc("/{user_id}/resources", userHandler.GetUserResources).Methods("GET")
+        users.HandleFunc("/{user_id}/database-config", s.dbConfigHandler.CreateDatabaseConfig).Methods("POST")
+        users.HandleFunc("/{user_id}/database-config", s.dbConfigHandler.DeleteDatabaseConfig).Methods("DELETE")
+        users.HandleFunc("/{user_id}/database-config/test", s.dbConfigHandler.TestDatabaseConnection).Methods("POST")
+        users.HandleFunc("/{user_id}/database-config/test-url", s.dbConfigHandler.TestDatabaseURL).Methods("POST")
+        users.HandleFunc("/{user_id}/sql/execute", s.sqlPlaygroundHandler.ExecuteQuery).Methods("POST")
+        users.HandleFunc("/{user_id}/sql/schema", s.sqlPlaygroundHandler.GetDatabaseSchema).Methods("GET")
+        users.HandleFunc("/{user_id}/sql/history", s.sqlPlaygroundHandler.GetQueryHistory).Methods("GET")
+
+        // Organization routes
+        users.HandleFunc("/{userId}/organizations", organizationHandler.GetUserOrganizations).Methods("GET")
+        users.HandleFunc("/{userId}/organizations", organizationHandler.CreateOrganization).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}", organizationHandler.GetOrganization).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/usage", organizationHandler.GetOrganizationUsage).Methods("GET")
+        
+        // Organization invitation routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations", organizationHandler.InviteToOrganization).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations", invitationHandler.GetOrganizationInvitations).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations/{invitationId}", invitationHandler.CancelInvitation).Methods("DELETE")
+        users.HandleFunc("/{userId}/organizations/{orgId}/invitations/{invitationId}/resend", invitationHandler.ResendInvitation).Methods("POST")
+        
+        // Project routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects", projectHandler.GetOrganizationProjects).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects", projectHandler.CreateProject).Methods("POST")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}", projectHandler.GetProject).Methods("GET")
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}", projectHandler.UpdateProject).Methods("PUT")
+        
+        // Project-specific invitation routes
+        users.HandleFunc("/{userId}/organizations/{orgId}/projects/{projectId}/invitations", organizationHandler.InviteToProject).Methods("POST")
+
+        // Metrics routes
+        metrics := api.PathPrefix("/metrics").Subrouter()
+        metrics.HandleFunc("", metricsHandler.CreateMetric).Methods("POST")
+        metrics.HandleFunc("", metricsHandler.GetMetrics).Methods("GET")
+        metrics.HandleFunc("/summary", metricsHandler.GetMetricsSummary).Methods("GET")
+
+        // Public invitation routes (no auth required)
+        publicAPI := r.PathPrefix("/api/v1").Subrouter()
+        publicAPI.Use(middleware.RateLimitMiddleware(s.config.RateLimitRPS/2, s.config.RateLimitBurst/2))
+        publicAPI.HandleFunc("/invitations/{token}", invitationHandler.GetInvitationDetails).Methods("GET")
+        publicAPI.HandleFunc("/invitations/{token}/accept", invitationHandler.AcceptInvitation).Methods("POST")
+
+        // Public metrics (optional auth)
+        publicMetrics := r.PathPrefix("/api/v1/public").Subrouter()
+        publicMetrics.Use(middleware.OptionalAuthMiddleware(s.jwtValidator))
+        publicMetrics.Use(middleware.RateLimitMiddleware(s.config.RateLimitRPS/2, s.config.RateLimitBurst/2))
+        publicMetrics.HandleFunc("/metrics", metricsHandler.CreateMetric).Methods("POST")
+
+        // Admin routes
+        adminAPI := api.PathPrefix("/admin").Subrouter()
+        adminAPI.Use(middleware.RequireRole("admin"))
+        adminAPI.HandleFunc("/users", userHandler.CreateUser).Methods("POST")
+
+        // Updated CORS configuration for Better Auth compatibility
+        allowedOrigins := []string{"http://localhost:3000"}
+        if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+                allowedOrigins = []string{envOrigins}
+        }
+
+        corsHandler := gorillaHandlers.CORS(
+                gorillaHandlers.AllowedOrigins(allowedOrigins),
+                gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+                gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization", "Cookie"}),
+                gorillaHandlers.ExposedHeaders([]string{"X-Total-Count", "Set-Cookie"}),
+                gorillaHandlers.AllowCredentials(), // This is crucial for Better Auth cookies
+        )(r)
+
+        return corsHandler
+}
+func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+	health := map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().UTC(),
+		"version":   "1.0.0",
+	}
+
+	if s.db != nil {
+		if err := s.db.GetPool().Ping(context.Background()); err != nil {
+			health["database"] = "unhealthy"
+			health["status"] = "degraded"
+		} else {
+			health["database"] = "healthy"
+		}
+	}
+
+	if s.redis != nil {
+		if err := s.redis.GetClient().Ping(context.Background()).Err(); err != nil {
+			health["redis"] = "unhealthy"
+		} else {
+			health["redis"] = "healthy"
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if health["status"] == "healthy" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+
+	middleware.WriteJSONResponse(w, http.StatusOK, health)
+}
+
+func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
+	response := map[string]interface{}{
+		"service": "go-backend",
+		"version": "1.0.0",
+		"status":  "running",
+		"docs":    "/api/v1",
+	}
+	middleware.WriteJSONResponse(w, http.StatusOK, response)
+}
+
+func (s *Server) waitForShutdown() error {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+	log.Info().Msg("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("HTTP server forced to shutdown")
+	}
+
+	s.cleanup()
+	log.Info().Msg("Server stopped")
+	return nil
+}
+
+func (s *Server) cleanup() {
+	if s.dbConfigHandler != nil {
+		s.dbConfigHandler.CleanupUserConnections()
+	}
+
+	if s.db != nil {
+		s.db.Close()
+	}
+
+	if s.redis != nil {
+		s.redis.Close()
+	}
+
+	if s.sshTunnel != nil {
+		s.sshTunnel.Close()
+	}
+}
+
+func setupLogging(level string) {
+	zerolog.TimeFieldFormat = time.RFC3339
+	
+	switch level {
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: time.RFC3339,
+	})
+} 

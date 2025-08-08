@@ -1,0 +1,369 @@
+---
+title: Email Invitations
+description: Team member onboarding through secure email invitations with role-based access
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Email Invitations
+
+SQLBase's invitation system enables seamless team onboarding by allowing you to invite collaborators via email, even if they don't have a SQLBase account yet. The system handles user registration, role assignment, and organization access automatically.
+
+<Callout type="info">
+**Seamless Onboarding**: Invited users can join your organization in one click, whether they're new to SQLBase or existing users.
+</Callout>
+
+## Overview
+
+The invitation system provides:
+
+- **Email-based Invitations**: Send invites to any email address
+- **Automatic Registration**: New users are guided through account creation
+- **Role Assignment**: Assign specific roles during invitation
+- **Secure Token System**: Cryptographically secure invitation links
+- **Expiration Management**: Invitations expire after 7 days for security
+- **Custom Messages**: Add personal messages to invitation emails
+
+## Invitation Flow
+
+### For Admins/Owners
+
+1. **Send Invitation**: Add email and select role
+2. **Email Delivery**: Secure invitation email sent automatically
+3. **Track Status**: Monitor invitation status in real-time
+4. **Manage Pending**: Resend or cancel invitations as needed
+
+### For Recipients
+
+1. **Receive Email**: Professional invitation email with organization details
+2. **Click Link**: Secure token-based invitation acceptance
+3. **Account Setup**: New users create account, existing users sign in
+4. **Join Organization**: Automatic role assignment and access grant
+
+## Sending Invitations
+
+### From Organization Dashboard
+
+Navigate to your organization dashboard and use the "Invite" button:
+
+```typescript title="Invitation Data Structure"
+interface InvitationRequest {
+  email: string
+  role: 'admin' | 'member'
+  message?: string
+}
+```
+
+**Required Information**:
+- **Email Address**: Valid email address of the invitee
+- **Role**: Admin or Member role assignment
+- **Custom Message**: Optional personal message
+
+### Invitation Dialog Features
+
+**Email Validation**: Real-time email format validation
+**Bulk Invitations**: Add multiple email addresses at once
+**Role Selection**: Choose between Admin and Member roles
+**Custom Messages**: Personalize the invitation with context
+
+```typescript title="Multiple Invitations Example"
+const invitations = [
+  { email: "developer@company.com", role: "member" },
+  { email: "manager@company.com", role: "admin" },
+  { email: "analyst@company.com", role: "member" }
+]
+```
+
+## Invitation States
+
+### Pending
+**Status**: Invitation sent, awaiting recipient action
+**Duration**: Valid for 7 days from creation
+**Actions**: Resend, cancel, or update invitation
+
+### Accepted
+**Status**: Recipient has joined the organization
+**Result**: User becomes active organization member
+**Access**: Immediate access to permitted projects and features
+
+### Expired
+**Status**: Invitation exceeded 7-day validity period
+**Resolution**: Send new invitation to the same email
+**Security**: Expired tokens cannot be used to join
+
+### Cancelled
+**Status**: Invitation revoked by admin before acceptance
+**Result**: Invitation link becomes invalid
+**Use Case**: Role changes or incorrect email addresses
+
+## Role-Based Invitations
+
+<Tabs items={["Admin Invitations", "Member Invitations", "Role Comparison"]}>
+
+<Tab value="Admin Invitations">
+**Admin Role Assignment**
+
+Admins have elevated permissions within the organization:
+
+**Capabilities**:
+- Manage all organization members
+- Create and delete projects
+- Send additional invitations
+- Access all organization projects
+- Modify organization settings
+
+**Use Cases**:
+- Team leads and managers
+- Senior developers with admin responsibilities
+- DevOps and infrastructure team members
+
+**Security Considerations**:
+- Admin access should be granted judiciously
+- Regular audit of admin permissions
+- Consider temporary admin access for specific projects
+</Tab>
+
+<Tab value="Member Invitations">
+**Member Role Assignment**
+
+Members have standard access to assigned projects:
+
+**Capabilities**:
+- Access explicitly shared projects
+- Execute SQL queries within permitted projects
+- View organization dashboard and metrics
+- Collaborate on shared database projects
+
+**Limitations**:
+- Cannot invite additional team members
+- Cannot create new projects independently
+- Cannot modify other member permissions
+
+**Use Cases**:
+- Developers and analysts
+- QA and testing team members
+- External contractors with limited access needs
+</Tab>
+
+<Tab value="Role Comparison">
+**Permission Matrix**
+
+| Feature | Owner | Admin | Member |
+|---------|-------|-------|---------|
+| Invite Members | ✅ | ✅ | ❌ |
+| Manage Roles | ✅ | ✅ | ❌ |
+| Create Projects | ✅ | ✅ | ❌* |
+| Delete Projects | ✅ | ✅ | ❌ |
+| Access All Projects | ✅ | ✅ | ❌ |
+| Execute Queries | ✅ | ✅ | ✅** |
+| View Organization | ✅ | ✅ | ✅ |
+| Delete Organization | ✅ | ❌ | ❌ |
+
+*Members can request project creation through admins
+**Only in projects they have explicit access to
+</Tab>
+
+</Tabs>
+
+## Invitation Management
+
+### Viewing Invitations
+
+The organization members dialog displays all pending invitations:
+
+```typescript title="Invitation Information"
+interface OrganizationInvitation {
+  id: string
+  organization_id: string
+  email: string
+  role: 'admin' | 'member'
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled'
+  invited_by: string
+  invited_at: string
+  expires_at: string
+  token: string
+  inviter?: {
+    name: string
+    email: string
+  }
+}
+```
+
+### Invitation Operations
+
+**Resend Invitation**: Send a new email with a fresh token
+**Cancel Invitation**: Revoke pending invitation before acceptance
+**View Details**: See invitation history and expiration information
+
+### Bulk Management
+
+For organizations with many invitations:
+
+**Filter by Status**: View only pending, expired, or accepted invitations
+**Bulk Cancel**: Cancel multiple invitations simultaneously
+**Export List**: Download invitation data for audit purposes
+
+## Security Features
+
+### Token-Based Security
+
+**Cryptographically Secure**: Invitation tokens use industry-standard randomization
+**Single Use**: Each token can only be used once to join an organization
+**Time-Limited**: Tokens expire after 7 days for security
+**Tamper-Resistant**: Tokens cannot be modified or reused
+
+### Email Verification
+
+**Domain Validation**: Verify email domains before sending invitations
+**Delivery Confirmation**: Track email delivery status
+**Spam Protection**: Professional email templates reduce spam detection
+
+### Access Control
+
+**Role Enforcement**: Invited users receive exactly the assigned role
+**Organization Isolation**: Invitations are specific to one organization
+**Permission Inheritance**: Users inherit organization-wide access policies
+
+## Email Templates
+
+### Invitation Email Content
+
+SQLBase sends professional invitation emails containing:
+
+**Email Components**:
+- Organization name and description
+- Inviter name and contact information
+- Role assignment details (Admin or Member)
+- Secure invitation acceptance link
+- Custom message from inviter (if provided)
+- Clear call-to-action button
+
+### Customization Options
+
+**Organization Branding**: Future support for custom logos and colors
+**Custom Messages**: Personalize invitations with context and instructions
+**Language Support**: Multi-language invitation emails (planned)
+
+## Troubleshooting
+
+### Common Issues
+
+**Invitation Not Received**:
+```
+User reports not receiving invitation email
+```
+**Troubleshooting Steps**:
+1. Check spam/junk folders
+2. Verify email address for typos
+3. Confirm corporate email filters
+4. Resend invitation with corrected email
+
+**Invitation Link Expired**:
+```
+Error: This invitation has expired
+```
+**Resolution**:
+1. Send a new invitation to the same email
+2. New token will be generated automatically
+3. Previous expired tokens become invalid
+
+**Cannot Accept Invitation**:
+```
+Error: Invalid invitation token
+```
+**Possible Causes**:
+- Token has been used already
+- Invitation was cancelled
+- URL was modified or corrupted
+- Browser cache issues
+
+### Email Delivery Issues
+
+**Corporate Email Filters**:
+Many organizations block external emails. Solutions:
+1. Add SQLBase to email whitelist
+2. Work with IT to allow invitation emails
+3. Use personal email for initial invitation
+
+**International Email Services**:
+Some email providers have strict filtering:
+1. Check regional spam detection rules
+2. Use alternative email addresses
+3. Contact support for delivery assistance
+
+### Resolution Steps
+
+If invitations aren't working:
+
+1. **Verify Email**: Double-check email address accuracy
+2. **Check Filters**: Review spam and corporate email filters
+3. **Resend**: Generate new invitation with fresh token
+4. **Alternative Email**: Try different email address
+5. **Contact Support**: For persistent delivery issues
+
+## Complete Invitation Workflow
+
+### Sending an Invitation (Step-by-Step)
+
+1. **Open Organization Dashboard**: Navigate to your organization
+2. **Click "Invite" Button**: Found in the top-right corner
+3. **Add Email Address**: Type your teammate's email
+4. **Select Role**: Choose Admin or Member
+5. **Add Personal Message** (Optional): Make it welcoming!
+6. **Click "Send Invitation"**: The email goes out immediately
+
+### What Your Teammate Receives
+
+Your teammate gets a professional email that includes:
+- Your name and organization details
+- Their assigned role (Admin or Member)
+- A secure "Accept Invitation" button
+- Your personal message (if you added one)
+
+### Accepting an Invitation
+
+When someone clicks your invitation link:
+
+1. **For New Users**: They'll create a SQLBase account first
+2. **For Existing Users**: They'll sign in to their account
+3. **Automatic Setup**: They're instantly added to your organization
+4. **Welcome Dashboard**: They see your projects and can start collaborating
+
+### Managing Pending Invitations
+
+Track your team invitations easily:
+
+- **View Status**: See who has accepted and who hasn't
+- **Resend**: Send reminder emails with one click  
+- **Cancel**: Remove invitations if plans change
+- **Expiration**: Invitations automatically expire after 7 days for security
+
+## Best Practices
+
+### Invitation Management
+
+**Regular Cleanup**: Cancel expired or unnecessary invitations
+**Role Assignment**: Use principle of least privilege
+**Audit Trail**: Keep records of who invited whom and when
+
+### Security Considerations
+
+**Email Verification**: Verify email addresses before sending invitations
+**Role Reviews**: Regularly review and update member roles
+**Access Monitoring**: Monitor new member activity after joining
+
+### Team Onboarding
+
+**Welcome Documentation**: Provide new members with getting-started guides
+**Initial Projects**: Assign new members to starter projects
+**Mentorship**: Pair new members with experienced team members
+
+---
+
+## Next Steps
+
+- **[Organizations →](/docs/organizations)** - Learn about organization structure and roles
+- **[Projects →](/docs/projects)** - Understand project-based collaboration
+- **[Security →](/docs/security/overview)** - Explore security features and best practices
+- **[API Reference →](/docs/api/organizations)** - Complete invitation API documentation 

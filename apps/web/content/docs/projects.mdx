@@ -1,0 +1,384 @@
+---
+title: Projects
+description: Organization-scoped database projects with secure connections and team collaboration
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Projects
+
+Projects are the core workspace units within SQLBase organizations. Each project represents a database environment where teams can connect, query, and collaborate on PostgreSQL databases with granular access control.
+
+<Callout type="info">
+**Project Scope**: Projects belong to organizations and inherit the organization's security and access policies. All database connections and queries are scoped to the project level.
+</Callout>
+
+## Overview
+
+A project in SQLBase provides:
+
+- **Database Connection**: Secure connection to your PostgreSQL database
+- **SQL Playground**: Interactive query editor with syntax highlighting
+- **Schema Visualization**: Comprehensive database structure overview
+- **Query History**: Tracking and reuse of SQL queries
+- **Team Access**: Role-based collaboration within the project
+- **Activity Logs**: Audit trail of database operations
+
+## Project Structure
+
+### Core Components
+
+```typescript title="Project Data Structure"
+interface Project {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+  last_activity: string
+  database_connected: boolean
+  database_type?: 'postgresql'
+  organization_id: string
+  organization?: {
+    name: string
+    slug: string
+  }
+}
+```
+
+### Project States
+
+**Not Connected**: Newly created project without database connection
+**Connected**: Project with active, validated database connection
+**Error State**: Connection issues or configuration problems
+
+## Creating Projects
+
+### From Organization Dashboard
+
+1. **Navigate to Organization**: Select your target organization
+2. **Click "Create Project"**: From the dashboard or empty state
+3. **Fill Project Details**:
+   - **Name**: Descriptive project name (e.g., "E-commerce Database")
+   - **Description**: Optional project description
+
+```typescript title="Project Creation Example"
+const projectData = {
+  name: "Production Analytics",
+  description: "Main analytics database for reporting and insights"
+}
+```
+
+### Project Naming Guidelines
+
+**Descriptive Names**: Use clear, descriptive names that indicate purpose
+**Environment Indicators**: Include environment info (prod, staging, dev)
+**Team Context**: Consider team or feature-specific naming
+
+Examples:
+- `production-ecommerce-db`
+- `staging-user-analytics`
+- `dev-payment-system`
+
+## Project Dashboard
+
+The project dashboard provides three main views accessed via tab navigation:
+
+### Database Connection Tab
+
+**Initial State**: Configuration interface for database connection
+**Connected State**: Connection status and management options
+**Connection Methods**: Database URL, SSH tunnel, or WireGuard VPN
+
+### Database Overview Tab
+
+Available only after successful database connection:
+
+- **Schema Statistics**: Tables, columns, views, and relationships
+- **Data Metrics**: Row counts, data types, and storage information  
+- **Health Indicators**: Connection status and performance metrics
+- **Table Browser**: Interactive exploration of database structure
+
+### SQL Playground Tab
+
+Interactive query environment:
+
+- **Query Editor**: Syntax-highlighted SQL editor with autocomplete
+- **Results Display**: Tabular result visualization with export options
+- **Query History**: Access to previous queries and execution times
+- **Schema Browser**: Sidebar with table and column information
+
+## Database Connections
+
+SQLBase supports multiple secure connection methods:
+
+<Tabs items={["Database URL", "SSH Tunnel", "WireGuard VPN"]}>
+
+<Tab value="Database URL">
+**Direct Connection**
+
+Most straightforward method for cloud databases:
+
+```sql title="Connection String Format"
+postgresql://username:password@hostname:port/database_name
+```
+
+**Use Cases**:
+- Cloud providers (AWS RDS, Google Cloud SQL, Azure Database)
+- Managed PostgreSQL services (Neon, Supabase, PlanetScale)
+- Docker containers with exposed ports
+
+**Security**: All credentials are encrypted with AES-256-GCM before storage
+</Tab>
+
+<Tab value="SSH Tunnel">
+**SSH Tunneling**
+
+Secure connection through SSH gateway:
+
+```bash title="SSH Connection Components"
+# SSH Gateway
+Host: your-server.com
+Port: 22
+User: your-username
+Key: ~/.ssh/private-key.pem
+
+# Database (accessed through tunnel)
+URL: postgresql://user:pass@localhost:5432/db
+```
+
+**Use Cases**:
+- On-premise databases behind firewalls
+- Databases accessible only from specific servers
+- Additional security layer for cloud databases
+
+**Benefits**: End-to-end encryption and network isolation
+</Tab>
+
+<Tab value="WireGuard VPN">
+**VPN Connection**
+
+Connect through WireGuard VPN tunnel:
+
+```ini title="WireGuard Configuration"
+[Interface]
+PrivateKey = your-private-key
+Address = 100.100.10.1/32
+DNS = 100.100.0.1
+
+[Peer]
+PublicKey = peer-public-key
+AllowedIPs = 100.100.0.0/16
+Endpoint = vpn.company.com:51820
+```
+
+**Use Cases**:
+- Corporate networks with VPN requirements
+- Multi-cloud environments
+- Enhanced network security and compliance
+
+**Security**: WireGuard provides state-of-the-art VPN encryption
+</Tab>
+
+</Tabs>
+
+## Team Collaboration
+
+### Project Access Control
+
+Project access is determined by organization membership:
+
+**Organization Owner**: Full access to all projects
+**Organization Admin**: Full access to all projects
+**Organization Member**: Access only to explicitly shared projects
+
+### Real-Time Collaboration
+
+**Shared Query History**: Team members can view and reuse each other's queries
+**Activity Timeline**: See who performed what operations and when
+**Schema Changes**: Automatic detection and notification of schema updates
+
+### Best Practices
+
+**Environment Separation**: Use different projects for prod/staging/dev
+**Access Auditing**: Regularly review who has access to sensitive databases
+**Query Sharing**: Use descriptive names for saved queries
+
+## Project Settings
+
+### Basic Information
+
+Update project metadata:
+- **Display Name**: Shown in organization dashboard
+- **Description**: Team context and purpose
+- **Database Type**: Currently PostgreSQL only
+
+### Connection Management
+
+**Connection Testing**: Verify database connectivity
+**Credential Updates**: Modify connection parameters securely
+**Connection History**: Audit log of connection changes
+
+### Advanced Configuration
+
+**Query Limits**: Set execution time and result size limits
+**Access Controls**: Project-specific permission overrides
+**Integration Settings**: API keys and webhook configurations
+
+## SQL Playground Features
+
+### Query Editor
+
+**Syntax Highlighting**: PostgreSQL-specific syntax coloring
+**Auto-completion**: Table and column name suggestions
+**Error Detection**: Real-time SQL syntax validation
+**Multi-query Support**: Execute multiple statements sequentially
+
+### Result Visualization
+
+**Tabular Display**: Sortable, filterable result tables
+**Export Options**: CSV, JSON, and SQL export formats
+**Large Result Handling**: Pagination for large datasets
+**Null Value Handling**: Clear indication of NULL values
+
+### Query Management
+
+```typescript title="Query History Structure"
+interface QueryHistory {
+  id: string
+  sql: string
+  executed_at: string
+  execution_time_ms: number
+  row_count: number
+  user_id: string
+  project_id: string
+}
+```
+
+**History Browser**: Search and filter previous queries
+**Query Sharing**: Copy and share queries with team members
+**Performance Metrics**: Execution time and resource usage tracking
+
+## Using Your Project
+
+### Getting Started with Your First Project
+
+After creating a project, you'll see three main tabs that guide you through the process:
+
+1. **Database Connection**: Start here to connect your PostgreSQL database
+2. **Database Overview**: Automatically appears once connected - shows your database structure
+3. **SQL Playground**: Write and execute queries on your connected database
+
+### Connecting Your Database
+
+The Database Connection tab provides three secure methods:
+
+**Database URL** (Easiest):
+- Perfect for cloud databases like AWS RDS, Neon, or Supabase
+- Just paste your connection string and click "Test Connection"
+- SQLBase encrypts your credentials automatically
+
+**SSH Tunnel** (For secure environments):
+- Connect through a secure SSH gateway
+- Great for databases behind firewalls
+- Enter your SSH server details and database URL
+
+**WireGuard VPN** (For corporate networks):
+- Connect through your company's VPN
+- Paste your WireGuard configuration
+- Access internal databases securely
+
+### Exploring Your Database
+
+Once connected, the Database Overview tab shows:
+
+- **Quick Stats**: Number of tables, columns, and total rows
+- **Health Metrics**: Connection status and data coverage
+- **Top Tables**: Your largest tables by row count
+- **Schema Browser**: Click to explore table structures
+
+### Running SQL Queries
+
+The SQL Playground is where the magic happens:
+
+1. **Write Queries**: Use the syntax-highlighted editor
+2. **Browse Schema**: See your tables and columns in the sidebar
+3. **Execute**: Click "Execute Query" to run your SQL
+4. **View Results**: See results in a clean, sortable table
+5. **Save History**: All your queries are automatically saved
+
+## Project Lifecycle
+
+### Creation to Production
+
+1. **Project Creation**: Create project within organization
+2. **Database Connection**: Configure secure database connection
+3. **Schema Exploration**: Review database structure and relationships
+4. **Query Development**: Build and test SQL queries
+5. **Team Collaboration**: Share access with team members
+6. **Production Use**: Execute queries and generate reports
+
+### Maintenance Operations
+
+**Connection Health Checks**: Automatic monitoring of database connectivity
+**Schema Drift Detection**: Notification when database structure changes
+**Performance Monitoring**: Query execution time and resource usage tracking
+**Access Auditing**: Regular review of team member access
+
+## Troubleshooting
+
+### Common Issues
+
+**Connection Timeouts**:
+```
+Error: Connection timeout after 30 seconds
+```
+- Check database server availability
+- Verify network connectivity
+- Review firewall rules and security groups
+
+**Permission Denied**:
+```
+Error: Permission denied for table "users"
+```
+- Verify database user permissions
+- Check PostgreSQL role assignments
+- Review row-level security policies
+
+**Schema Not Loading**:
+```
+Error: Failed to introspect database schema
+```
+- Ensure database user has `USAGE` permission on schemas
+- Check if database has `information_schema` access
+- Verify connection stability
+
+### Performance Optimization
+
+**Query Optimization**:
+- Use EXPLAIN ANALYZE for query planning
+- Add appropriate indexes for frequent queries
+- Limit result sets with LIMIT clauses
+
+**Connection Optimization**:
+- Use connection pooling for high-traffic applications
+- Configure appropriate connection timeouts
+- Monitor connection count and database load
+
+### Getting Help
+
+If you encounter project-related issues:
+
+1. **Check Connection**: Verify database connectivity outside SQLBase
+2. **Review Permissions**: Ensure proper PostgreSQL user permissions
+3. **Monitor Logs**: Check both SQLBase and database server logs
+4. **Contact Support**: For complex configuration issues
+
+---
+
+## Next Steps
+
+- **[Database Connections →](/docs/database/connections)** - Deep dive into connection methods
+- **[SQL Playground →](/docs/database/sql-playground)** - Advanced query features
+- **[Schema Visualization →](/docs/database/schema)** - Understanding database structures
+- **[API Reference →](/docs/api/projects)** - Complete API documentation 

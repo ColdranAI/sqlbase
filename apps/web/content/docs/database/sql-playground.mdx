@@ -1,0 +1,389 @@
+---
+title: SQL Playground
+description: Write, execute, and analyze SQL queries with an intuitive interface
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# SQL Playground
+
+The SQL Playground is where you interact with your database through an intuitive interface. Write queries, explore your data, and analyze results - all in a beautifully designed environment that makes SQL approachable for everyone.
+
+<Callout type="info">
+**Smart Query Interface**: The playground includes syntax highlighting, auto-completion, and query formatting to help you write better SQL.
+</Callout>
+
+## Getting Started
+
+Once your database is connected, the SQL Playground becomes your primary workspace for data exploration and analysis.
+
+### Interface Overview
+
+The playground is divided into three main areas:
+
+1. **Query Editor** (Left): Where you write your SQL queries
+2. **Schema Browser** (Right): Explore your database structure
+3. **Results Panel** (Bottom): View query results and execution details
+
+## Writing Your First Query
+
+### Quick Start Tutorial
+
+Let's walk through executing your first query:
+
+1. **Open the Playground**
+   - Navigate to your project
+   - Click the "SQL Playground" tab
+   - You'll see the query editor ready for input
+
+2. **Explore Your Schema**
+   - Look at the right sidebar showing your tables
+   - Click on any table to see its columns
+   - Use this to understand your data structure
+
+3. **Write a Simple Query**
+   ```sql
+   SELECT * FROM users LIMIT 10;
+   ```
+
+4. **Execute the Query**
+   - Click the "Execute Query" button (or press Ctrl+Enter)
+   - Results appear in the bottom panel
+   - Execution time and row count are displayed
+
+### Query Editor Features
+
+**Syntax Highlighting**
+- SQL keywords are highlighted in blue
+- Strings appear in green
+- Comments are shown in gray
+- Table and column names are color-coded
+
+**Auto-Completion**
+- Type table names and see suggestions
+- Column names auto-complete when you reference tables
+- SQL keywords complete as you type
+- Press Tab to accept suggestions
+
+**Query Formatting**
+- Right-click and select "Format Query" to clean up your SQL
+- Proper indentation and spacing applied automatically
+- Makes complex queries easier to read
+
+## Schema Browser
+
+The right sidebar is your database navigation tool:
+
+### Table Explorer
+- **Tables List**: All your tables with row counts
+- **Expand Tables**: Click to see columns and types
+- **Search**: Find specific tables quickly
+- **Sorting**: Tables ordered by size by default
+
+### Column Information
+For each table, you can see:
+- **Column Name**: The field identifier
+- **Data Type**: PostgreSQL type (TEXT, INTEGER, TIMESTAMP, etc.)
+- **Constraints**: Primary keys, foreign keys, NOT NULL
+- **Sample Values**: Preview actual data (when available)
+
+### Quick Actions
+- **Click Column**: Adds it to your query at cursor position
+- **Click Table**: Adds table name to query
+- **Double-Click**: Adds fully qualified name (schema.table.column)
+
+## Query Execution
+
+### Running Queries
+
+**Execute Button**
+- Click "Execute Query" to run your SQL
+- Button shows loading spinner during execution
+- Turns green when query completes successfully
+
+**Keyboard Shortcuts**
+- `Ctrl+Enter` (Windows/Linux) or `Cmd+Enter` (Mac): Execute query
+- `Ctrl+/` (Windows/Linux) or `Cmd+/` (Mac): Comment/uncomment lines
+- `Ctrl+A` (Windows/Linux) or `Cmd+A` (Mac): Select all
+
+**Multiple Queries**
+- Separate multiple queries with semicolons
+- Only the query where your cursor is located will execute
+- Select text to run only specific portions
+
+### Query Results
+
+**Results Table**
+- Clean, sortable table showing your data
+- Click column headers to sort
+- Scroll horizontally for wide result sets
+- Copy individual cells or entire rows
+
+**Execution Details**
+- **Execution Time**: How long the query took
+- **Rows Returned**: Number of result rows
+- **Columns**: Number of columns in result set
+- **Query Status**: Success, error, or warning indicators
+
+**Export Options**
+- **Copy**: Copy results to clipboard
+- **JSON**: Export as JSON format
+- **CSV**: Download as comma-separated values
+
+## Common Query Patterns
+
+### Data Exploration
+
+**See Table Structure**
+```sql
+-- View first few rows to understand data
+SELECT * FROM customers LIMIT 5;
+
+-- Count total records
+SELECT COUNT(*) FROM customers;
+
+-- See column types and constraints
+\d customers
+```
+
+**Find Specific Data**
+```sql
+-- Search for specific customers
+SELECT * FROM customers 
+WHERE email LIKE '%@gmail.com';
+
+-- Find recent orders
+SELECT * FROM orders 
+WHERE created_at > NOW() - INTERVAL '7 days';
+```
+
+### Data Analysis
+
+**Aggregation Queries**
+```sql
+-- Sales by month
+SELECT 
+  DATE_TRUNC('month', created_at) as month,
+  COUNT(*) as orders,
+  SUM(total) as revenue
+FROM orders 
+GROUP BY month 
+ORDER BY month DESC;
+```
+
+**Joining Tables**
+```sql
+-- Customer orders with details
+SELECT 
+  c.name,
+  c.email,
+  o.total,
+  o.created_at
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE o.created_at > '2024-01-01';
+```
+
+## Query Management
+
+### Query History
+
+SQLBase automatically saves your query history:
+
+- **Recent Queries**: Access your last 50 queries
+- **Search History**: Find queries by keywords
+- **Rerun Queries**: Click any historical query to rerun it
+- **Save Favorites**: Star important queries for quick access
+
+### Organizing Queries
+
+**Query Comments**
+```sql
+-- Customer Analysis: Find high-value customers
+-- Created: 2024-01-15
+-- Purpose: Monthly reporting
+SELECT customer_id, SUM(total) as lifetime_value
+FROM orders 
+GROUP BY customer_id
+HAVING SUM(total) > 1000;
+```
+
+**Query Naming**
+- Use descriptive comments at the top of queries
+- Include purpose and creation date
+- Note any specific business logic
+
+## Performance Tips
+
+### Writing Efficient Queries
+
+**Use LIMIT for Exploration**
+```sql
+-- Good: Limit results when exploring
+SELECT * FROM large_table LIMIT 100;
+
+-- Avoid: Running queries that return millions of rows
+SELECT * FROM large_table;
+```
+
+**Index-Friendly Queries**
+```sql
+-- Good: Use indexed columns in WHERE clauses
+SELECT * FROM users WHERE id = 123;
+
+-- Less efficient: Functions on indexed columns
+SELECT * FROM users WHERE UPPER(name) = 'JOHN';
+```
+
+**Specific Column Selection**
+```sql
+-- Good: Select only needed columns
+SELECT name, email FROM users;
+
+-- Less efficient: Select all columns when not needed
+SELECT * FROM users;
+```
+
+### Understanding Query Plans
+
+**EXPLAIN Your Queries**
+```sql
+EXPLAIN ANALYZE 
+SELECT * FROM orders 
+WHERE customer_id = 123;
+```
+
+This shows:
+- **Execution Plan**: How PostgreSQL runs your query
+- **Cost Estimates**: Relative performance costs
+- **Actual Time**: Real execution time
+- **Rows Processed**: Number of rows examined
+
+## Error Handling
+
+### Common SQL Errors
+
+**Syntax Errors**
+```sql
+-- Error: Missing FROM clause
+SELECT name email FROM users;
+
+-- Fixed: Proper syntax
+SELECT name, email FROM users;
+```
+
+**Table/Column Not Found**
+```sql
+-- Error: Table name misspelled
+SELECT * FROM costumers;
+
+-- Fixed: Correct table name
+SELECT * FROM customers;
+```
+
+**Permission Errors**
+```sql
+-- Error: No permission to access table
+SELECT * FROM sensitive_data;
+
+-- Solution: Contact your database administrator
+```
+
+### Error Messages
+
+SQLBase provides helpful error messages:
+
+- **Line Numbers**: Shows exactly where the error occurred
+- **Suggestions**: Offers potential fixes
+- **Context**: Highlights the problematic SQL section
+- **Documentation Links**: Links to relevant PostgreSQL docs
+
+## Advanced Features
+
+### Query Collaboration
+
+**Sharing Queries**
+- Copy query URL to share with teammates
+- Queries are automatically saved with your project
+- Team members can see and run your queries
+
+**Query Comments and Discussion**
+- Add detailed comments to explain complex logic
+- Use comments to document business rules
+- Help teammates understand your analysis
+
+### Data Visualization
+
+**Result Formatting**
+- Numeric columns show with proper formatting
+- Dates display in readable format
+- Boolean values show as Yes/No
+- NULL values are clearly marked
+
+**Quick Insights**
+- Row counts for each query
+- Column statistics when available
+- Data type information in results
+- Performance metrics for optimization
+
+## Best Practices
+
+### Query Organization
+
+**Structure Your SQL**
+```sql
+-- Good: Well-formatted, readable query
+SELECT 
+  c.name,
+  c.email,
+  COUNT(o.id) as order_count,
+  SUM(o.total) as total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+WHERE c.created_at > '2024-01-01'
+GROUP BY c.id, c.name, c.email
+ORDER BY total_spent DESC;
+```
+
+**Use Comments Effectively**
+```sql
+-- Monthly Revenue Report
+-- Includes all customers who made purchases
+-- Excludes refunded orders
+SELECT 
+  -- Customer information
+  c.name,
+  c.email,
+  
+  -- Order metrics
+  COUNT(o.id) as orders,
+  SUM(o.total) as revenue
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE o.status != 'refunded'  -- Exclude refunds
+GROUP BY c.id, c.name, c.email;
+```
+
+### Security Considerations
+
+**Safe Query Practices**
+- Use `LIMIT` when exploring large tables
+- Be cautious with `UPDATE` and `DELETE` statements
+- Test queries on small datasets first
+- Always review queries before execution
+
+**Data Privacy**
+- Be mindful of sensitive data in query results
+- Don't include passwords or personal data in shared queries
+- Follow your organization's data handling policies
+
+---
+
+## Next Steps
+
+Now that you're comfortable with the SQL Playground:
+
+- **[Database Connections →](/docs/database/connections)** - Learn about different connection methods
+- **[Project Collaboration →](/docs/projects)** - Share your analysis with teammates
+- **[Organization Management →](/docs/organizations)** - Set up team access and permissions 

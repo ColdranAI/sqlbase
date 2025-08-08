@@ -1,0 +1,14 @@
+{
+  "title": "SQLBase Documentation",
+  "pages": [
+    "index",
+    "getting-started",
+    "---Core Features---",
+    "organizations",
+    "projects", 
+    "invitations",
+    "---Database---",
+    "database/connections",
+    "database/sql-playground"
+  ]
+} 

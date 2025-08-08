@@ -1,0 +1,355 @@
+---
+title: Getting Started
+description: Sign up for SQLBase and connect your first database in minutes
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Getting Started with SQLBase
+
+Welcome to SQLBase! This guide will walk you through signing up, creating your first organization, and connecting your PostgreSQL database. You'll be querying your data in just a few minutes.
+
+<Callout type="info">
+**What You Need**: A PostgreSQL database you want to connect to SQLBase. This can be from any cloud provider, on-premise server, or local development environment.
+</Callout>
+
+## Quick Overview
+
+Getting started with SQLBase involves:
+1. Creating your free account
+2. Setting up your first organization
+3. Connecting your PostgreSQL database
+4. Exploring your data with the SQL playground
+5. Inviting your team members
+
+Let's get started!
+
+<Steps>
+
+<Step>
+
+## Create Your Account
+
+Head to **[sqlbase.com](/)** and create your free account:
+
+1. **Sign Up**: Click "Sign Up" on the homepage
+2. **Choose Method**: Sign up with email or connect with Google/GitHub
+3. **Verify Email**: Check your inbox and verify your email address
+4. **Complete Profile**: Add your name and create a secure password
+
+After signing up, you'll be redirected to the onboarding page where you can create your first organization.
+
+### What You Get
+
+With your free SQLBase account, you get:
+- **Unlimited database connections**
+- **Team collaboration features**
+- **Secure credential storage**
+- **Query history and favorites**
+- **Email invitations for teammates**
+
+</Step>
+
+<Step>
+
+## Create Your First Organization
+
+Organizations are how you organize your team and database projects in SQLBase.
+
+### From the Onboarding Page
+
+If you're a new user, you'll see the onboarding screen:
+
+1. **Click "Create Your First Organization"**
+2. **Enter Organization Name**: For example, "Acme Corp" or "Marketing Team"
+3. **Add Description** (Optional): Describe what this organization is for
+4. **Click Create**: Your organization URL will be auto-generated
+
+### Organization Settings
+
+Once created, your organization includes:
+- **Unique URL**: Like `sqlbase.com/org/acme-corp`
+- **Team Management**: Invite members and manage roles
+- **Project Workspace**: All your database projects in one place
+- **Usage Metrics**: Track storage, compute, and team activity
+
+<Callout type="tip">
+**Organization Names**: Choose a name that represents your team or company. You can always change it later in settings.
+</Callout>
+
+</Step>
+
+<Step>
+
+## Connect Your Database
+
+Now it's time to connect your PostgreSQL database. SQLBase supports multiple secure connection methods.
+
+### Create Your First Project
+
+1. **Click "Create Project"** from your organization dashboard
+2. **Enter Project Name**: Something descriptive like "Production DB" or "Analytics"
+3. **Add Description**: Optional details about this database project
+4. **Click Create**: You'll be taken to the Database Connection tab
+
+### Connection Methods
+
+SQLBase offers three secure ways to connect your database:
+
+<Tabs items={["Database URL", "SSH Tunnel", "WireGuard VPN"]}>
+
+<Tab value="Database URL">
+**Direct Connection** - Most common method
+
+Perfect for cloud databases and managed services.
+
+**Supported Providers:**
+- **Cloud**: AWS RDS, Google Cloud SQL, Azure Database
+- **Managed**: Neon, Supabase, PlanetScale, Railway, Heroku
+- **Local**: Docker containers, local PostgreSQL
+
+**How to Connect:**
+1. Get your PostgreSQL connection string from your provider
+2. Paste it into the "Database URL" field
+3. Click "Test Connection" to verify
+4. Click "Save Configuration" once successful
+
+**Example connection strings:**
+```
+postgresql://user:password@host:5432/database
+postgres://user:pass@neon.host.com:5432/db
+```
+</Tab>
+
+<Tab value="SSH Tunnel">
+**SSH Tunneling** - For secure environments
+
+Connect through an SSH gateway to reach databases behind firewalls.
+
+**When to Use:**
+- Corporate firewalls blocking direct access
+- On-premise servers accessible via SSH
+- Additional security for cloud databases
+
+**What You Need:**
+- SSH server hostname and port
+- SSH username and private key
+- Database connection details (as seen from SSH server)
+
+**How to Connect:**
+1. Select "SSH Tunnel" tab
+2. Enter SSH server details
+3. Upload or paste your SSH private key
+4. Add database connection info
+5. Test and save configuration
+</Tab>
+
+<Tab value="WireGuard VPN">
+**VPN Connection** - For corporate networks
+
+Connect through your existing WireGuard VPN infrastructure.
+
+**When to Use:**
+- Corporate VPN requirements
+- Compliance and audit requirements
+- Multi-cloud secure networking
+
+**What You Need:**
+- WireGuard configuration file from your IT team
+- Database connection string (accessible via VPN)
+
+**How to Connect:**
+1. Select "WireGuard VPN" tab
+2. Paste your WireGuard configuration
+3. Add database connection details
+4. Test VPN and database connectivity
+5. Save configuration
+</Tab>
+
+</Tabs>
+
+### Connection Testing
+
+SQLBase automatically tests your connection before saving:
+
+- **✅ Success**: Green checkmark means you're ready to go
+- **❌ Timeout**: Check your hostname, port, and firewall settings
+- **❌ Auth Failed**: Verify your username and password
+- **❌ DB Not Found**: Double-check your database name
+
+</Step>
+
+<Step>
+
+## Explore Your Database
+
+Once connected, you'll automatically see the **Database Overview** tab with:
+
+### Quick Statistics
+- **Tables**: Number of tables in your database
+- **Columns**: Total columns across all tables
+- **Rows**: Estimated total row count
+- **Size**: Database storage usage
+
+### Schema Browser
+- **Table List**: All your tables with row counts
+- **Column Details**: Click tables to see column types and constraints
+- **Search**: Find specific tables quickly
+- **Relationships**: See foreign key relationships
+
+### Health Metrics
+- **Connection Status**: Real-time connection health
+- **Query Performance**: Average response times
+- **Data Coverage**: Tables with and without data
+
+<Callout type="tip">
+**First Time?** Click on a few tables to explore their structure. This helps you understand your data before writing queries.
+</Callout>
+
+</Step>
+
+<Step>
+
+## Start Querying Data
+
+Ready to run your first query? Head to the **SQL Playground** tab.
+
+### Write Your First Query
+
+The SQL Playground includes:
+- **Syntax Highlighting**: SQL keywords are color-coded
+- **Auto-Completion**: Table and column names suggest as you type
+- **Schema Sidebar**: Browse your tables and columns
+- **Query History**: All queries are automatically saved
+
+Try this simple query to get started:
+```sql
+-- See your largest tables
+SELECT 
+  table_name,
+  row_count_estimate
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY row_count_estimate DESC
+LIMIT 10;
+```
+
+### Query Features
+
+**Execution**
+- Click "Execute Query" or press `Ctrl+Enter`
+- Results appear in a clean, sortable table
+- Execution time and row count displayed
+
+**Results**
+- **Sort**: Click column headers to sort results
+- **Export**: Copy to clipboard, download as CSV, or JSON
+- **Navigate**: Pagination for large result sets
+
+**History**
+- **Recent Queries**: Access your last 50 queries
+- **Search**: Find queries by keywords
+- **Favorites**: Star important queries for quick access
+
+</Step>
+
+<Step>
+
+## Invite Your Team
+
+SQLBase is built for collaboration. Let's add your teammates:
+
+### Send Invitations
+
+1. **Click "Invite"** from your organization dashboard
+2. **Enter Email Address**: Add your teammate's email
+3. **Choose Role**:
+   - **Admin**: Can manage team members and organization settings
+   - **Member**: Can access projects and run queries
+4. **Add Message** (Optional): Personal welcome message
+5. **Click "Send Invitation"**: They'll receive an email immediately
+
+### What Happens Next
+
+**For Your Teammate:**
+- They receive a professional invitation email
+- Click "Accept Invitation" to join
+- If they don't have a SQLBase account, they'll create one
+- Once accepted, they automatically join your organization
+
+**For You:**
+- Track invitation status in the Members dialog
+- Resend invitations if needed
+- Manage team member roles anytime
+
+### Team Collaboration
+
+Once your team is set up:
+- **Shared Projects**: Everyone can access organization projects
+- **Query Sharing**: Share queries and results with teammates
+- **Role-Based Access**: Admins can manage, Members can query
+- **Activity History**: See who's working on what
+
+</Step>
+
+</Steps>
+
+## What's Next?
+
+Congratulations! You now have SQLBase set up with your database and team. Here are some next steps:
+
+### Explore Advanced Features
+
+**Multiple Databases**
+- Connect additional databases by creating new projects
+- Keep development, staging, and production separate
+- Each project has its own secure connection
+
+**Query Organization**
+- Use comments to document your queries
+- Create query templates for common operations
+- Build a knowledge base of useful queries
+
+**Team Workflows**
+- Establish query review processes
+- Share insights through organized query collections
+- Use role-based access to maintain security
+
+### Learn More
+
+- **[Organizations →](/docs/organizations)** - Advanced team management features
+- **[Database Connections →](/docs/database/connections)** - Detailed connection methods
+- **[SQL Playground →](/docs/database/sql-playground)** - Master the query interface
+- **[Invitations →](/docs/invitations)** - Team collaboration best practices
+
+## Common Questions
+
+### Is my data secure?
+Yes! SQLBase uses AES-256-GCM encryption for all credentials. We never see your actual database data - queries run directly from our servers to yours over encrypted connections.
+
+### Can I connect multiple databases?
+Absolutely! Create multiple projects within your organization, each with its own database connection. Perfect for separating development, staging, and production environments.
+
+### What if my team member doesn't have an account?
+No problem! Send them an invitation email. When they click "Accept," they'll create their SQLBase account and automatically join your organization.
+
+### Can I use SQLBase with my company's VPN?
+Yes! SQLBase supports WireGuard VPN connections, making it perfect for corporate environments with strict network policies.
+
+### How much does SQLBase cost?
+SQLBase offers a generous free tier with unlimited database connections and team members. We also have paid plans for advanced features and higher usage limits.
+
+## Getting Help
+
+Need assistance? We're here to help:
+
+- **📧 Email Support**: Contact our team for personalized help
+- **📚 Documentation**: Comprehensive guides for every feature
+- **💬 Community**: Join other SQLBase users in our forums
+- **🐛 Bug Reports**: Found an issue? Let us know!
+
+---
+
+**Ready to dive deeper?** Check out our feature guides or start exploring your data with the SQL playground. Welcome to SQLBase! 
